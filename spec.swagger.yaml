@@ -1,0 +1,72 @@
+---
+swagger: "2.0"
+info:
+  title: Cloud-agotchi
+  description: A cloud-based tomagotchi-like game
+  version: "1"
+basepath: /api/
+consumes:
+  - application/json
+produces:
+  - application/json
+parameters:
+  petID:
+    name: petID
+    in: path
+    type: string
+  username:
+    name: username
+    in: path
+    type: string
+
+paths:
+  /pet/{petID}:
+    parameters:
+      - $ref: '#/parameters/petID'
+    get:
+      summary: Returns information about the cloudagotchi with given ID
+    post:
+      summary: Creates a new cloudagotchi with given ID
+      parameters:
+        - name: username
+          in: query
+          type: string
+          required: true
+  /pet/{petID}/feed/{foodID}:
+    parameters:
+      - $ref: '#/parameters/petID'
+    post:
+      summary: Feeds the cloudagotchi a food of the given ID
+  /pet/{petID}/play/{gameID}:
+    parameters:
+      - $ref: '#/parameters/petID'
+    post:
+      summary: Plays a game with the cloudagotchi, optionally of the given ID
+  /pet/{petID}/clean:
+    parameters:
+      - $ref: '#/parameters/petID'
+    post:
+      summary: Cleans up the poo of the cloudagotchi
+  /pet/{petID}/wash:
+    parameters:
+      - $ref: '#/parameters/petID'
+    post:
+      summary: Bathes the cloudagotchi
+  /pet/{petID}/scold:
+    parameters:
+      - $ref: '#/parameters/petID'
+    post:
+      summary: Scolds the cloudagotchi
+  /pet/{petID}/heal:
+    parameters:
+      - $ref: '#/parameters/petID'
+    post:
+      summary: Heals a sick cloudagotchi
+  /user/{username}:
+    parameters:
+      - $ref: '#/parameters/username'
+    post:
+      summary: Creates a new user with username
+    get:
+      summary: Returns list of pets
+
