@@ -4,7 +4,7 @@ info:
   title: Cloud-agotchi
   description: A cloud-based tomagotchi-like game
   version: "1"
-basepath: /api/
+basePath: /api
 consumes:
   - application/json
 produces:
@@ -14,10 +14,14 @@ parameters:
     name: petID
     in: path
     type: string
+    format: path
+    required: true
   username:
     name: username
     in: path
     type: string
+    format: path
+    required: true
 
 paths:
   /pet/{petID}:
@@ -25,48 +29,117 @@ paths:
       - $ref: '#/parameters/petID'
     get:
       summary: Returns information about the cloudagotchi with given ID
+      operationId: pet.get_data
+      responses:
+        200:
+          description: pet information
+        default:
+          description: command failed
     post:
       summary: Creates a new cloudagotchi with given ID
+      operationId: pet.make_new
       parameters:
         - name: username
           in: query
           type: string
           required: true
+      responses:
+        200:
+          description: made pet
+        default:
+          description: command failed
   /pet/{petID}/feed/{foodID}:
     parameters:
       - $ref: '#/parameters/petID'
+      - name: foodID
+        in: path
+        type: string
+        format: path
+        required: true
     post:
       summary: Feeds the cloudagotchi a food of the given ID
+      operationId: pet.feed
+      responses:
+        200:
+          description: fed pet
+        default:
+          description: command failed
   /pet/{petID}/play/{gameID}:
     parameters:
       - $ref: '#/parameters/petID'
+      - name: gameID
+        in: path
+        type: string
+        format: path
+        required: true
     post:
       summary: Plays a game with the cloudagotchi, optionally of the given ID
+      operationId: pet.play
+      responses:
+        200:
+          description: played with pet
+        default:
+          description: command failed
   /pet/{petID}/clean:
     parameters:
       - $ref: '#/parameters/petID'
     post:
       summary: Cleans up the poo of the cloudagotchi
+      operationId: pet.clean
+      responses:
+        200:
+          description: cleaned pet's poo
+        default:
+          description: command failed
   /pet/{petID}/wash:
     parameters:
       - $ref: '#/parameters/petID'
     post:
       summary: Bathes the cloudagotchi
+      operationId: pet.wash
+      responses:
+        200:
+          description: washed pet
+        default:
+          description: command failed
   /pet/{petID}/scold:
     parameters:
       - $ref: '#/parameters/petID'
     post:
       summary: Scolds the cloudagotchi
+      operationId: pet.scold
+      responses:
+        200:
+          description: disciplined pet
+        default:
+          description: command failed
   /pet/{petID}/heal:
     parameters:
       - $ref: '#/parameters/petID'
     post:
       summary: Heals a sick cloudagotchi
+      operationId: pet.heal
+      responses:
+        200:
+          description: healed pet
+        default:
+          description: command failed
   /user/{username}:
     parameters:
       - $ref: '#/parameters/username'
     post:
       summary: Creates a new user with username
+      operationId: user.make_new
+      responses:
+        200:
+          description: made user
+        default:
+          description: command failed
     get:
       summary: Returns list of pets
-
+      operationId: user.get_data
+      responses:
+        200:
+          description: user information
+        default:
+          description: command failed
