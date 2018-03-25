@@ -32,7 +32,7 @@ def make_new(petID):
         'happiness': 5,
         'discipline': 5,
         'cleanliness': 5,
-        'sickness': 0,
+        'sick': False,
         'age': 0,
         'weight': 5,
         'poo': 5,
@@ -97,17 +97,33 @@ def play(petID, gameID):
     return {'result': 'Played with pet'}, 200
 
 def clean(petID):
-    db.pet.update_one({'petID': petID}, {'$set': {'last_interaction': time.time()}})
-    return {'result': 'clean up poo'}, 501
+    if db.pet.find_one({'petID': petID})['poo'] == 0:
+        return {'result': 'No poo to clean up'}, 400
+    db.pet.update_one({'petID': petID}, {'$set': {'poo': 0, 'last_poo': None, 'last_interaction': time.time()}})
+    return {'result': 'Cleaned up poo'}, 200
 
 def wash(petID):
-    db.pet.update_one({'petID': petID}, {'$set': {'last_interaction': time.time()}})
-    return {'result': 'wash pet'}, 501
+    if db.pet.find_one({'petID': petID})['cleanliness'] == 5:
+        return {'result': "Your pet's already clean"}, 400
+    db.pet.update_one({'petID': petID}, {'$set': {'cleanliness': 5, 'last_interaction': time.time()}})
+    return {'result': 'Washed pet'}, 200
 
 def scold(petID):
-    db.pet.update_one({'petID': petID}, {'$set': {'last_interaction': time.time()}})
-    return {'result': 'discipline pet'}, 501
+    result = db.pet.find_one({'petID': petID})
+    curDis = result['discipline']
+    curHap = result['happiness']
+    curDis += 1
+    curHap -= 1
+    if curDis > 5:
+        return {'result': 'Pet is already at max discipline'}, 400
+    if curHap < 0:
+        return {'result': 'Your pet is too unhappy to listen to you'}, 400
+    db.pet.update_one({'petID': petID}, {'$set': {'discipline': curDis, 'happiness': curHap,
+                                                  'last_interaction': time.time()}})
+    return {'result': 'Disciplined pet'}, 200
 
 def heal(petID):
-    db.pet.update_one({'petID': petID}, {'$set': {'last_interaction': time.time()}})
-    return {'result': 'heal pet'}, 501
+    if not db.pet.find_one({'petID': petID})['sick']:
+        return {'result': 'Your pet is not sick'}, 400
+    db.pet.update_one({'petID': petID}, {'$set': {'sick': False, 'last_interaction': time.time()}})
+    return {'result': 'Healed pet'}, 200

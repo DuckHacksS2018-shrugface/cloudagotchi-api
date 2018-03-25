@@ -14,7 +14,7 @@ def make_new(username):
     if db.user.find_one({'user': username}) != None:
         return {'result': 'User with username already exists'}, 409
     db.user.insert_one({'user': username, 'pets': []})
-    return {'result': 'Made user'}, 501
+    return {'result': 'Made user'}, 200
 
 def delete(username):
     result = db.user.find_one_and_delete({'user': username})
