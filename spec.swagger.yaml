@@ -51,6 +51,11 @@ paths:
     delete:
       summary: Deletes a travelpet with the given ID
       operationId: pet.delete
+      parameters:
+        - name: username
+          in: query
+          type: string
+          required: true
       responses:
         200:
           description: made pet

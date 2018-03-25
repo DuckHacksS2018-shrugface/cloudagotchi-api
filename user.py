@@ -17,7 +17,10 @@ def make_new(username):
     return {'result': 'Made user'}, 501
 
 def delete(username):
-    result = db.user.delete_one({'user': username})
-    if result.deleted_count == 1:
-        return {'result': 'Deleted user'}, 200
-    return {'result': 'Could not delete user'}, 500
+    result = db.user.find_one_and_delete({'user': username})
+    if result == None:
+        return {'result': 'User not found'}, 404
+    petslist = result['pets']
+    for petid in petslist:
+        db.pet.delete_one({'petID': petid})
+    return {'result': 'Deleted user'}, 200
