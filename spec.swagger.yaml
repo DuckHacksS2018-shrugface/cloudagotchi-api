@@ -43,6 +43,10 @@ paths:
           in: query
           type: string
           required: true
+        - name: petname
+          in: query
+          type: string
+          required: true
       responses:
         200:
           description: made pet
@@ -66,7 +70,7 @@ paths:
       - $ref: '#/parameters/petID'
       - name: foodID
         in: path
-        type: string
+        type: integer
         format: path
         required: true
     post:
