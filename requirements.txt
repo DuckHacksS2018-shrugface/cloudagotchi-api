@@ -1,2 +1,3 @@
 connexion
 pymongo
+dnspython

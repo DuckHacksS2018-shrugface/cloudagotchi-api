@@ -1,7 +1,23 @@
 import connexion
+from pymongo import MongoClient
+
+client = MongoClient("mongodb+srv://admin:shrugface@petuserdata-vckb7.mongodb.net/test")
+db = client.data
 
 def get_data(username):
-    return {'message': 'get user data'}, 501
+    result = db.user.find_one({'user': username})
+    if result != None:
+        return {'result': result['pets']}, 200
+    return {'result': 'User not found'}, 404
 
 def make_new(username):
-    return {'message': 'make a user'}, 501
+    if db.user.find_one({'user': username}) != None:
+        return {'result': 'User with username already exists'}, 409
+    db.user.insert_one({'user': username, 'pets': []})
+    return {'result': 'Made user'}, 501
+
+def delete(username):
+    result = db.user.delete_one({'user': username})
+    if result.deleted_count == 1:
+        return {'result': 'Deleted user'}, 200
+    return {'result': 'Could not delete user'}, 500

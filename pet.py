@@ -6,6 +6,9 @@ def get_data(petID):
 def make_new(petID):
     return {'message': 'make a pet'}, 501
 
+def delete(petID):
+    return {'message': 'kill a pet'}, 501
+
 def feed(petID, foodID):
     return {'message': 'feed pet'}, 501
 
