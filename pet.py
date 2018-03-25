@@ -1,28 +1,35 @@
 import connexion
+from pymongo import MongoClient
+
+client = MongoClient("mongodb+srv://admin:shrugface@petuserdata-vckb7.mongodb.net/test")
+db = client.data
 
 def get_data(petID):
-    return {'message': 'get pet data'}, 501
+    result = db.pet.find_one({'petID': petID})
+    return {'result': result['name']}, 200
 
 def make_new(petID):
-    return {'message': 'make a pet'}, 501
+    db.pet.insert_one({'petID': petID, 'name': 'testName'})
+    return {'result': 'make a pet'}, 501
 
 def delete(petID):
-    return {'message': 'kill a pet'}, 501
+    db.pet.delete_one({'petID': petID})
+    return {'result': 'kill a pet'}, 501
 
 def feed(petID, foodID):
-    return {'message': 'feed pet'}, 501
+    return {'result': 'feed pet'}, 501
 
 def play(petID, gameID):
-    return {'message': 'play with pet'}, 501
+    return {'result': 'play with pet'}, 501
 
 def clean(petID):
-    return {'message': 'clean up poo'}, 501
+    return {'result': 'clean up poo'}, 501
 
 def wash(petID):
-    return {'message': 'wash pet'}, 501
+    return {'result': 'wash pet'}, 501
 
 def scold(petID):
-    return {'message': 'discipline pet'}, 501
+    return {'result': 'discipline pet'}, 501
 
 def heal(petID):
-    return {'message': 'heal pet'}, 501
+    return {'result': 'heal pet'}, 501
