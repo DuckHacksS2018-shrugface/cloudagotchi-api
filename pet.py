@@ -1,4 +1,5 @@
 import time
+import datetime
 import random
 
 import connexion
@@ -18,21 +19,39 @@ def update_everything(petID):
         * meals_used
         poo
         sick
-        sleep_time
+        * asleep
         weight
     """
     curState = db.pet.find_one({'petID': petID})
     curTime = time.time()
+    curDateTime = datetime.datetime()
+    timeSinceInter = curTime - curState['last_interaction']
+    # Whether it died
     if curState['age'] < 0:
         return False
-    if curTime - curState['last_interaction'] > 604800:  # More than a week since interaction
+    if timeSinceInter > 172800:  # More than a week since interaction
         db.pet.update_one({'petID': petID}, {'$set': {'age': -1}})
         return False
+    if curTime - curState['spawned'] > 1728000:
+        db.pet.update_one({'petID': petID}, {'$set': {'age': -1}})
+        return False
+    # Whether it can eat meals
     if curTime - curState['last_meal'] > 86400:  # One day has passed since food
         db.pet.update_one({'petID': petID}, {'$set': {'meals_used': 0}})
+    # Whether it's hatched
     if curState['age'] == 0 and curTime - curState['spawned'] < curState['hatch_time']:
         db.pet.update_one({'petID': petID}, {'$set': {'age': 1}})
-    db.pet.update_one({'petID': petID}, {'$set': {'last_updated': curTime}})
+    # Whether it's asleep
+    if curDateTime.hour > 21 and curDateTime.hour < 8:
+        db.pet.update_one({'petID': petID}, {'$set': {'asleep': True}})
+    else:
+        db.pet.update_one({'petID': petID}, {'$set': {'asleep': False}})
+    # Poo
+    if curTime - curState['last_cleaned'] > 3600:
+        if curState['last_poo'] and curTime - curState['last_poo'] > 600:
+            if random.randint(0,1):
+                db.pet.update_one({'petID': petID}, {'$inc': {'poo': 1}})
+                db.pet.update_one({'petID': petID}, {'$set': {'last_poo': time.time()}})
     return True
 
 def get_data(petID):
@@ -67,13 +86,16 @@ def make_new(petID):
         'age': 0,
         'weight': 5,
         'poo': 5,
+        'asleep': False,
         'last_interaction': time.time(),
         'last_meal': time.time(),
         'last_fed': time.time(),
         'last_poo': None,
+        'last_cleaned': time.time(),
+        'last_washed': time.time(),
+        'last_disciplined': time.time(),
         'spawned': time.time(),
         'hatch_time': 30 + random.randint(0,60),
-        'sleep_time': 0,
         'meals_used': 0
     }
     db.pet.insert_one(new_pet)
@@ -116,8 +138,7 @@ def feed(petID, foodID):
     newFilled = curFilled + fillingLevel
     if newFilled > 5:
         newFilled = 5
-    db.pet.update_one({'petID': petID}, {'$set': {'hunger': newFilled}})
-    db.pet.update_one({'petID': petID}, {'$set': {'last_interaction': time.time()}})
+    db.pet.update_one({'petID': petID}, {'$set': {'hunger': newFilled, 'last_fed': time.time(), 'last_interaction': time.time()}})
     return {'result': 'Pet fed', 'hunger': newFilled}, 200, {'Access-Control-Allow-Origin': '*'}
 
 def play(petID, gameID):
@@ -139,6 +160,7 @@ def clean(petID):
         return {'result': 'Your pet is dead'}, 400, {'Access-Control-Allow-Origin': '*'}
     if db.pet.find_one({'petID': petID})['poo'] == 0:
         return {'result': 'No poo to clean up'}, 400, {'Access-Control-Allow-Origin': '*'}
+    db.pet.update_one({'petID': petID}, {'$set': {'last_cleaned': time.time()}})
     db.pet.update_one({'petID': petID}, {'$set': {'poo': 0, 'last_poo': None, 'last_interaction': time.time()}})
     return {'result': 'Cleaned up poo'}, 200, {'Access-Control-Allow-Origin': '*'}
 
@@ -147,6 +169,7 @@ def wash(petID):
         return {'result': 'Your pet is dead'}, 400, {'Access-Control-Allow-Origin': '*'}
     if db.pet.find_one({'petID': petID})['cleanliness'] == 5:
         return {'result': "Your pet's already clean"}, 400, {'Access-Control-Allow-Origin': '*'}
+    db.pet.update_one({'petID': petID}, {'$set': {'last_washed': time.time()}})
     db.pet.update_one({'petID': petID}, {'$set': {'cleanliness': 5, 'last_interaction': time.time()}})
     return {'result': 'Washed pet'}, 200, {'Access-Control-Allow-Origin': '*'}
 
@@ -162,6 +185,7 @@ def scold(petID):
         return {'result': 'Pet is already at max discipline'}, 400, {'Access-Control-Allow-Origin': '*'}
     if curHap < 0:
         return {'result': 'Your pet is too unhappy to listen to you'}, 400, {'Access-Control-Allow-Origin': '*'}
+    db.pet.update_one({'petID': petID}, {'$set': {'last_disciplined': time.time()}})
     db.pet.update_one({'petID': petID}, {'$set': {'discipline': curDis, 'happiness': curHap,
                                                   'last_interaction': time.time()}})
     return {'result': 'Disciplined pet'}, 200, {'Access-Control-Allow-Origin': '*'}
