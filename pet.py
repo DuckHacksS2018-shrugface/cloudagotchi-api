@@ -1,4 +1,5 @@
 import time
+import random
 
 import connexion
 from pymongo import MongoClient
@@ -6,24 +7,54 @@ from pymongo import MongoClient
 client = MongoClient("mongodb+srv://admin:shrugface@petuserdata-vckb7.mongodb.net/test")
 db = client.data
 
+def update_everything(petID):
+    """
+    Things to update:
+        * age
+        cleanliness
+        discipline
+        happiness
+        hunger
+        * meals_used
+        poo
+        sick
+        sleep_time
+        weight
+    """
+    curState = db.pet.find_one({'petID': petID})
+    curTime = time.time()
+    if curState['age'] < 0:
+        return False
+    if curTime - curState['last_interaction'] > 604800:  # More than a week since interaction
+        db.pet.update_one({'petID': petID}, {'$set': {'age': -1}})
+        return False
+    if curTime - curState['last_meal'] > 86400:  # One day has passed since food
+        db.pet.update_one({'petID': petID}, {'$set': {'meals_used': 0}})
+    if curState['age'] == 0 and curTime - curState['spawned'] < curState['hatch_time']:
+        db.pet.update_one({'petID': petID}, {'$set': {'age': 1}})
+    db.pet.update_one({'petID': petID}, {'$set': {'last_updated': curTime}})
+    return True
+
 def get_data(petID):
+    if not update_everything(petID):
+        return {'result': 'Your pet is dead'}, 400, {'access-control-allow-origin': '*'}
     result = db.pet.find_one({'petID': petID})
     if result == None:
-        return {'result': 'Pet not found'}, 404
+        return {'result': 'Pet not found'}, 404, {'access-control-allow-origin': '*'}
     rDict = {}
     for key, val in result.items():
         rDict[key] = val
     rDict.pop('_id')
-    return rDict, 200
+    return rDict, 200, {'access-control-allow-origin': '*'}
 
 def make_new(petID):
     args = connexion.request.args
     username = args.get('username')
     petname = args.get('petname')
     if db.pet.find_one({'petID': petID}) != None:
-        return {'result': 'Pet with ID already exists'}, 409
+        return {'result': 'Pet with ID already exists'}, 409, {'access-control-allow-origin': '*'}
     if db.user.find_one({'user': username}) == None:
-        return {'result': 'That user does not exist'}, 400
+        return {'result': 'That user does not exist'}, 400, {'access-control-allow-origin': '*'}
     new_pet = {
         'petID': petID,
         'name': petname,
@@ -38,7 +69,10 @@ def make_new(petID):
         'poo': 5,
         'last_interaction': time.time(),
         'last_meal': time.time(),
+        'last_fed': time.time(),
         'last_poo': None,
+        'spawned': time.time(),
+        'hatch_time': 30 + random.randint(0,60),
         'sleep_time': 0,
         'meals_used': 0
     }
@@ -46,28 +80,30 @@ def make_new(petID):
     petslist = db.user.find_one({'user': username})['pets']
     petslist.append(petID)
     db.user.update_one({'user': username}, {'$set': {'pets': petslist}})
-    return {'result': 'made a pet', 'id': petID}, 200
+    return {'result': 'made a pet', 'id': petID}, 200, {'access-control-allow-origin': '*'}
 
 def delete(petID):
     args = connexion.request.args
     username = args.get('username')
     uresult = db.user.find_one({'user': username})
     if uresult == None:
-        return {'result': 'That user does not exist'}, 400
+        return {'result': 'That user does not exist'}, 400, {'access-control-allow-origin': '*'}
     petslist = uresult['pets']
     if not petID in petslist:
-        return {'result': 'That user does not own that pet'}, 404
+        return {'result': 'That user does not own that pet'}, 404, {'access-control-allow-origin': '*'}
     petslist.remove(petID)
     db.user.update_one({'user': username}, {'$set': {'pets': petslist}})
     result = db.pet.delete_one({'petID': petID})
     if result.deleted_count == 1:
-        return {'result': 'Killed pet'}, 200
-    return {'result': 'Could not delete pet'}, 500
+        return {'result': 'Killed pet'}, 200, {'access-control-allow-origin': '*'}
+    return {'result': 'Could not delete pet'}, 500, {'access-control-allow-origin': '*'}
 
 def feed(petID, foodID):
+    if not update_everything(petID):
+        return {'result': 'Your pet is dead'}, 400, {'access-control-allow-origin': '*'}
     foodData = db.food.find_one({'foodID': foodID})
     if foodData == None:
-        return {'result': 'No such food'}, 404
+        return {'result': 'No such food'}, 404, {'access-control-allow-origin': '*'}
     fillingLevel = foodData['filling']
     meal = foodData['meal']
     if meal:
@@ -75,55 +111,65 @@ def feed(petID, foodID):
             db.pet.update_one({'petID': petID}, {'$inc': {'meals_used': 1}})
             db.pet.update_one({'petID': petID}, {'$set': {'last_meal': time.time()}})
         else:
-            return {'result': 'Your pet is full'}, 400
+            return {'result': 'Your pet is full'}, 400, {'access-control-allow-origin': '*'}
     curFilled = db.pet.find_one({'petID': petID})['hunger']
     newFilled = curFilled + fillingLevel
     if newFilled > 5:
         newFilled = 5
     db.pet.update_one({'petID': petID}, {'$set': {'hunger': newFilled}})
     db.pet.update_one({'petID': petID}, {'$set': {'last_interaction': time.time()}})
-    return {'result': 'Pet fed', 'hunger': newFilled}, 200
+    return {'result': 'Pet fed', 'hunger': newFilled}, 200, {'access-control-allow-origin': '*'}
 
 def play(petID, gameID):
+    if not update_everything(petID):
+        return {'result': 'Your pet is dead'}, 400, {'access-control-allow-origin': '*'}
     result = db.pet.find_one({'petID': petID})
     if result['hunger'] < 1:
-        return {'result': 'Your pet is too hungry to play'}, 400
+        return {'result': 'Your pet is too hungry to play'}, 400, {'access-control-allow-origin': '*'}
     if result['happiness'] > 3:
         db.pet.update_one({'petID': petID}, {'$set': {'happiness': 5}})
     else:
         db.pet.update_one({'petID': petID}, {'$inc': {'happiness': 2}})
     db.pet.update_one({'petID': petID}, {'$inc': {'hunger': -1}})
     db.pet.update_one({'petID': petID}, {'$set': {'last_interaction': time.time()}})
-    return {'result': 'Played with pet'}, 200
+    return {'result': 'Played with pet'}, 200, {'access-control-allow-origin': '*'}
 
 def clean(petID):
+    if not update_everything(petID):
+        return {'result': 'Your pet is dead'}, 400, {'access-control-allow-origin': '*'}
     if db.pet.find_one({'petID': petID})['poo'] == 0:
-        return {'result': 'No poo to clean up'}, 400
+        return {'result': 'No poo to clean up'}, 400, {'access-control-allow-origin': '*'}
     db.pet.update_one({'petID': petID}, {'$set': {'poo': 0, 'last_poo': None, 'last_interaction': time.time()}})
-    return {'result': 'Cleaned up poo'}, 200
+    return {'result': 'Cleaned up poo'}, 200, {'access-control-allow-origin': '*'}
 
 def wash(petID):
+    if not update_everything(petID):
+        return {'result': 'Your pet is dead'}, 400, {'access-control-allow-origin': '*'}
     if db.pet.find_one({'petID': petID})['cleanliness'] == 5:
-        return {'result': "Your pet's already clean"}, 400
+        return {'result': "Your pet's already clean"}, 400, {'access-control-allow-origin': '*'}
     db.pet.update_one({'petID': petID}, {'$set': {'cleanliness': 5, 'last_interaction': time.time()}})
-    return {'result': 'Washed pet'}, 200
+    return {'result': 'Washed pet'}, 200, {'access-control-allow-origin': '*'}
 
 def scold(petID):
+    if not update_everything(petID):
+        return {'result': 'Your pet is dead'}, 400, {'access-control-allow-origin': '*'}
     result = db.pet.find_one({'petID': petID})
     curDis = result['discipline']
     curHap = result['happiness']
     curDis += 1
     curHap -= 1
     if curDis > 5:
-        return {'result': 'Pet is already at max discipline'}, 400
+        return {'result': 'Pet is already at max discipline'}, 400, {'access-control-allow-origin': '*'}
     if curHap < 0:
-        return {'result': 'Your pet is too unhappy to listen to you'}, 400
+        return {'result': 'Your pet is too unhappy to listen to you'}, 400, {'access-control-allow-origin': '*'}
     db.pet.update_one({'petID': petID}, {'$set': {'discipline': curDis, 'happiness': curHap,
                                                   'last_interaction': time.time()}})
-    return {'result': 'Disciplined pet'}, 200
+    return {'result': 'Disciplined pet'}, 200, {'access-control-allow-origin': '*'}
 
 def heal(petID):
+    if not update_everything(petID):
+        return {'result': 'Your pet is dead'}, 400, {'access-control-allow-origin': '*'}
     if not db.pet.find_one({'petID': petID})['sick']:
-        return {'result': 'Your pet is not sick'}, 400
+        return {'result': 'Your pet is not sick'}, 400, {'access-control-allow-origin': '*'}
     db.pet.update_one({'petID': petID}, {'$set': {'sick': False, 'last_interaction': time.time()}})
-    return {'result': 'Healed pet'}, 200
+    return {'result': 'Healed pet'}, 200, {'access-control-allow-origin': '*'}
