@@ -17,7 +17,7 @@ def update_everything(petID):
         happiness
         hunger
         * meals_used
-        poo
+        * poo
         sick
         * asleep
         weight
